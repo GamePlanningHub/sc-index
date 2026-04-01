@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyCast — 강의 목록</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    --bg-void: #08090d;
+    --bg-surface: #0e1019;
+    --bg-elevated: #141722;
+    --bg-card: #181c2a;
+    --bg-glass: rgba(20, 23, 34, 0.75);
+    --border-subtle: rgba(255,255,255,0.04);
+    --border-dim: rgba(255,255,255,0.08);
+    --border-accent: rgba(129,140,248,0.3);
+    --text-primary: #eaedf3;
+    --text-secondary: #8b95a8;
+    --text-muted: #5a6478;
+    --accent: #818cf8;
+    --accent-glow: rgba(129,140,248,0.15);
+    --accent-bright: #a5b4fc;
+    --gold: #f0c040;
+    --gold-dim: rgba(240,192,64,0.12);
+    --green: #6ee7a0;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    background: var(--bg-void);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -1;
+    background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(129,140,248,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(240,192,64,0.03) 0%, transparent 50%);
+}
+
+/* ========== 헤더 ========== */
+header {
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 28px 40px;
+    position: sticky; top: 0; z-index: 100;
+}
+.header-inner {
+    max-width: 1000px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+}
+.brand {
+    display: flex; align-items: center; gap: 14px;
+}
+.brand-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 20px var(--accent-glow);
+}
+.brand-title {
+    font-size: 20px; font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+}
+.brand-sub {
+    font-size: 11px; font-weight: 400;
+    color: var(--text-muted); margin-top: 1px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+}
+#repo-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-dim);
+    border-radius: 20px;
+    padding: 5px 14px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* ========== 메인 ========== */
+main {
+    max-width: 1000px; margin: 0 auto;
+    padding: 40px 40px 80px;
+}
+
+/* ========== 상태 메시지 ========== */
+#status {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; padding: 60px 0;
+    color: var(--text-muted); font-size: 14px;
+}
+.spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border-dim);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#error-msg {
+    display: none;
+    background: rgba(248,113,113,0.06);
+    border: 1px solid rgba(248,113,113,0.15);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    color: #f87171;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+}
+
+/* ========== 강의 그리드 ========== */
+#grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+#grid.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ========== 강의 카드 ========== */
+.card {
+    display: block;
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius);
+    padding: 22px;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+.card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(129,140,248,0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(129,140,248,0.1);
+}
+.card:hover::before { opacity: 1; }
+
+.card-index {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--accent);
+    opacity: 0.6;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+.card-title {
+    font-size: 15px; font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 12px;
+    word-break: keep-all;
+}
+.card-title.no-desc {
+    color: var(--text-muted);
+    font-style: italic;
+    font-weight: 400;
+}
+.card-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+}
+.card-repo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1;
+}
+.card-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.card-arrow {
+    position: absolute;
+    bottom: 20px; right: 20px;
+    font-size: 14px;
+    color: var(--accent);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: var(--transition);
+}
+.card:hover .card-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* ========== 빈 상태 ========== */
+#empty {
+    display: none;
+    text-align: center;
+    padding: 80px 0;
+    color: var(--text-muted);
+}
+#empty .empty-icon { font-size: 40px; margin-bottom: 16px; }
+#empty p { font-size: 14px; line-height: 1.8; }
+
+/* ========== 푸터 ========== */
+footer {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+    border-top: 1px solid var(--border-subtle);
+}
+footer a {
+    color: var(--accent);
+    text-decoration: none;
+    opacity: 0.7;
+}
+footer a:hover { opacity: 1; }
+
+@media (max-width: 600px) {
+    header { padding: 16px 20px; }
+    .header-inner { flex-wrap: wrap; gap: 10px; }
+    .brand-title { font-size: 17px; }
+    #repo-count { font-size: 10px; padding: 4px 10px; }
+    main { padding: 20px 14px 60px; }
+    #grid { grid-template-columns: 1fr; gap: 12px; }
+    .card { padding: 18px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">🎓</div>
+      <div>
+        <div class="brand-title">StudyCast</div>
+        <div class="brand-sub">GamePlanningHub</div>
+      </div>
+    </div>
+    <div id="repo-count">불러오는 중…</div>
+  </div>
+</header>
+
+<main>
+  <div id="error-msg"></div>
+
+  <div id="status">
+    <div class="spinner"></div>
+    <span>강의 목록을 불러오는 중…</span>
+  </div>
+
+  <div id="grid"></div>
+
+  <div id="empty">
+    <div class="empty-icon">📭</div>
+    <p>등록된 강의가 없습니다.<br>파이프라인으로 새 SC를 배포해보세요.</p>
+  </div>
+</main>
+
+<footer>
+  <a href="https://github.com/GamePlanningHub" target="_blank">github.com/GamePlanningHub</a>
+  &nbsp;·&nbsp; StudyCast Launcher
+</footer>
+
+<script>
+const ORG = 'GamePlanningHub';
+const API  = `https://api.github.com/orgs/${ORG}/repos?per_page=100&sort=updated&type=public`;
+const PAGES_BASE = `https://${ORG.toLowerCase()}.github.io`;
+
+// 날짜 포맷: 2024-03-15 → 24.03.15
+function fmtDate(iso) {
+    const d = new Date(iso);
+    const yy = String(d.getFullYear()).slice(2);
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${yy}.${mm}.${dd}`;
+}
+
+async function load() {
+    const status  = document.getElementById('status');
+    const grid    = document.getElementById('grid');
+    const counter = document.getElementById('repo-count');
+    const errBox  = document.getElementById('error-msg');
+    const empty   = document.getElementById('empty');
+
+    try {
+        const res = await fetch(API);
+
+        // API 속도 제한 처리
+        if (res.status === 403) {
+            const remaining = res.headers.get('x-ratelimit-remaining');
+            if (remaining === '0') {
+                throw new Error('GitHub API 속도 제한에 도달했습니다. 잠시 후 새로고침해주세요.');
+            }
+        }
+        if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
+
+        const repos = await res.json();
+
+        // org 특수 레포(.github, 레포명==org명) 제외, description 없는 것도 표시
+        // Description 앞 숫자 추출 (예: "1. 게임 기획", "2) 디자인", "03 기초")
+        function descNum(repo) {
+            const m = (repo.description || '').match(/^(\d+)/);
+            return m ? parseInt(m[1], 10) : Infinity;
+        }
+
+        const scs = repos
+            .filter(r => !r.archived)
+            .filter(r => r.name !== ORG && r.name !== '.github')
+            .sort((a, b) => descNum(a) - descNum(b));
+
+        status.style.display = 'none';
+
+        if (scs.length === 0) {
+            empty.style.display = 'block';
+            counter.textContent = '강의 0개';
+            return;
+        }
+
+        counter.textContent = `강의 ${scs.length}개`;
+
+        scs.forEach((repo, i) => {
+            const url   = `${PAGES_BASE}/${repo.name}/`;
+            const title = repo.description || repo.name;
+            const hasDesc = !!repo.description;
+
+            const card = document.createElement('a');
+            card.className = 'card';
+            card.href = url;
+            card.target = '_blank';
+            card.rel = 'noopener noreferrer';
+            card.innerHTML = `
+                <div class="card-index">SC · ${String(i+1).padStart(2,'0')}</div>
+                <div class="card-title${hasDesc ? '' : ' no-desc'}">${escHtml(title)}</div>
+                <div class="card-meta">
+                    <span class="card-repo">${escHtml(repo.name)}</span>
+                    <span class="card-date">${fmtDate(repo.updated_at)}</span>
+                </div>
+                <span class="card-arrow">→</span>
+            `;
+            grid.appendChild(card);
+        });
+
+        // 렌더 후 페이드인
+        requestAnimationFrame(() => grid.classList.add('visible'));
+
+    } catch (err) {
+        status.style.display = 'none';
+        errBox.style.display = 'block';
+        errBox.textContent = `⚠ ${err.message}`;
+        counter.textContent = '오류';
+    }
+}
+
+function escHtml(str) {
+    return str
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+}
+
+load();
+</script>
+</body>
+</html>

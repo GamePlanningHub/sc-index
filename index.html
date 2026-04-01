@@ -343,7 +343,7 @@ async function load() {
 
         const scs = repos
             .filter(r => !r.archived)
-            .filter(r => r.name !== ORG && r.name !== '.github')
+            .filter(r => r.name !== ORG && r.name !== '.github' && r.name !== 'sc-index')
             .sort((a, b) => descNum(a) - descNum(b));
 
         status.style.display = 'none';
